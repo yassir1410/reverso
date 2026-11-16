@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f4f4f5" />
+    <title>Lexicon — Personal vocabulary</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand"><span class="brand-mark">L</span><span>lexicon</span></div>
+        <nav class="main-nav" aria-label="Main navigation">
+          <button class="nav-item active" data-view="dashboard"><span class="nav-icon">⌂</span>Dashboard</button>
+          <button class="nav-item" data-view="review"><span class="nav-icon">↻</span>Review <span class="badge" id="nav-due-badge">0</span></button>
+          <button class="nav-item" data-view="all"><span class="nav-icon">≡</span>All words</button>
+          <button class="nav-item" data-view="favorites"><span class="nav-icon">♡</span>Favorites</button>
+          <button class="nav-item" data-view="tags"><span class="nav-icon">#</span>Tags</button>
+          <button class="nav-item" data-view="transfer"><span class="nav-icon">↕</span>Import / export</button>
+        </nav>
+        <div class="sidebar-bottom">
+          <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span>Settings</button>
+          <div class="storage-note"><span class="status-dot"></span><span>Saved locally</span></div>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <button class="icon-button mobile-menu" id="mobile-menu" aria-label="Open menu">☰</button>
+          <div class="breadcrumb"><span id="page-kicker">Overview</span><span class="breadcrumb-slash">/</span><strong id="page-title">Dashboard</strong></div>
+          <div class="top-actions">
+            <button class="icon-button" id="theme-toggle" aria-label="Toggle dark mode">☾</button>
+            <button class="button button-primary" id="add-word-top"><span>+</span> Add word</button>
+          </div>
+        </header>
+
+        <div class="page-wrap">
+          <!-- DASHBOARD VIEW -->
+          <section id="dashboard-view" class="view active-view">
+            <div class="hero-row">
+              <div>
+                <p class="eyebrow">Your language, your way</p>
+                <h1>Keep the words<br /><em>worth remembering.</em></h1>
+              </div>
+              <p class="hero-copy">A calm, focused place for vocabulary collected from everyday reading and Reverso Context.</p>
+            </div>
+
+            <!-- Review Callout Banner -->
+            <div class="review-callout-card" id="dashboard-review-banner">
+              <div class="review-callout-content">
+                <span class="callout-icon">↻</span>
+                <div>
+                  <h3 id="banner-title">Ready for your daily review?</h3>
+                  <p id="banner-subtitle">Stay consistent with spaced repetition.</p>
+                </div>
+              </div>
+              <button class="button button-primary" id="banner-start-review">Start review</button>
+            </div>
+
+            <!-- Learning Statistics Grid -->
+            <div class="stats-grid" id="stats-grid"></div>
+
+            <!-- Learning Analytics: Weekly Activity & Progress Overview -->
+            <div class="dashboard-grid learning-analytics-grid">
+              <section class="panel weekly-activity-panel">
+                <div class="panel-heading">
+                  <div>
+                    <p class="eyebrow">Review activity</p>
+                    <h2>Past 7 days</h2>
+                  </div>
+                  <span class="streak-badge" id="streak-indicator">0 day streak 🔥</span>
+                </div>
+                <div class="weekly-chart" id="weekly-chart"></div>
+              </section>
+
+              <section class="panel progress-overview-panel">
+                <div class="panel-heading">
+                  <div>
+                    <p class="eyebrow">Retention overview</p>
+                    <h2>Learning states</h2>
+                  </div>
+                </div>
+                <div class="progress-breakdown" id="progress-breakdown"></div>
+              </section>
+            </div>
+
+            <!-- Recent Words & Language Pairs -->
+            <div class="dashboard-grid" style="margin-top: var(--space-24);">
+              <section class="panel recent-panel">
+                <div class="panel-heading">
+                  <div>
+                    <p class="eyebrow">Your collection</p>
+                    <h2>Recently added</h2>
+                  </div>
+                  <button class="text-button" data-view="all">View all <span>→</span></button>
+                </div>
+                <div id="recent-list" class="word-list"></div>
+              </section>
+              <section class="panel distribution-panel">
+                <div class="panel-heading">
+                  <div>
+                    <p class="eyebrow">A quick look</p>
+                    <h2>By language pair</h2>
+                  </div>
+                </div>
+                <div id="language-breakdown" class="language-breakdown"></div>
+              </section>
+            </div>
+          </section>
+
+          <!-- REVIEW VIEW (Dedicated Review Mode) -->
+          <section id="review-view" class="view">
+            <!-- Review Configuration Screen -->
+            <div class="review-screen-wrap" id="review-config-screen">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Spaced repetition</p>
+                  <h1>Vocabulary review</h1>
+                  <p class="muted">Review one word at a time in a focused, distraction-free environment.</p>
+                </div>
+              </div>
+
+              <div class="review-config-card panel">
+                <div class="config-grid">
+                  <div class="field">
+                    <label for="review-filter-mode"><span>Review mode</span></label>
+                    <select id="review-filter-mode">
+                      <option value="due">Due words (recommended)</option>
+                      <option value="all">All vocabulary</option>
+                      <option value="new">New words only</option>
+                      <option value="favorites">Favorites only</option>
+                      <option value="tag">By selected tag</option>
+                      <option value="pair">By language pair</option>
+                    </select>
+                  </div>
+
+                  <div class="field" id="config-tag-field" style="display: none;">
+                    <label for="review-tag-select"><span>Tag</span></label>
+                    <select id="review-tag-select"><option value="">Select a tag</option></select>
+                  </div>
+
+                  <div class="field" id="config-pair-field" style="display: none;">
+                    <label for="review-pair-select"><span>Language pair</span></label>
+                    <select id="review-pair-select"><option value="">Select a language pair</option></select>
+                  </div>
+
+                  <div class="field">
+                    <label for="review-size-select"><span>Session size</span></label>
+                    <select id="review-size-select">
+                      <option value="10">10 words</option>
+                      <option value="20" selected>20 words</option>
+                      <option value="30">30 words</option>
+                      <option value="all">All available words</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="session-estimate-bar">
+                  <div class="estimate-info">
+                    <strong id="session-eligible-count">0 words</strong>
+                    <span>eligible for this review session</span>
+                  </div>
+                  <button class="button button-primary" id="start-session-btn">Start review session</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Active Review Card Screen (Distraction-Free) -->
+            <div class="review-session-wrap" id="review-active-screen" style="display: none;">
+              <!-- Header: Exit button, Session Progress, Remaining -->
+              <div class="review-header">
+                <button class="button button-secondary review-exit-btn" id="review-exit-btn" aria-label="Exit review session">
+                  <span>✕</span> Exit
+                </button>
+                <div class="review-progress-meta">
+                  <div class="progress-track" aria-hidden="true">
+                    <div class="progress-bar-fill" id="session-progress-fill" style="width: 0%;"></div>
+                  </div>
+                  <div class="progress-counter">
+                    <span id="session-position-text">Card 1 of 10</span>
+                    <span class="remaining-badge" id="session-remaining-text">10 remaining</span>
+                  </div>
+                </div>
+                <div class="state-pill" id="review-card-state">New</div>
+              </div>
+
+              <!-- Main Review Card -->
+              <div class="review-card" id="review-card" role="region" aria-label="Vocabulary review card">
+                <!-- Card Front Side -->
+                <div class="review-card-front" id="review-front">
+                  <div class="card-meta-row">
+                    <span class="pair-pill" id="card-pair-badge">English → Arabic</span>
+                    <div class="card-tags-list" id="card-tags-list"></div>
+                  </div>
+                  <div class="card-prompt-word" id="card-prompt-word">serendipity</div>
+                  <div class="card-front-example" id="card-front-example" style="display: none;"></div>
+                </div>
+
+                <!-- Card Back Side (Answer Section) -->
+                <div class="review-card-back" id="review-back" style="display: none;">
+                  <div class="divider"></div>
+                  <div class="answer-section">
+                    <div class="answer-label">Translation</div>
+                    <div class="answer-text" id="card-answer-translation">heureuse découverte</div>
+                  </div>
+
+                  <div class="example-section" id="card-example-section" style="display: none;">
+                    <div class="example-source" id="card-example-source"></div>
+                    <div class="example-target" id="card-example-target"></div>
+                  </div>
+
+                  <div class="notes-section" id="card-notes-section" style="display: none;">
+                    <span class="notes-label">Note:</span>
+                    <span class="notes-body" id="card-notes-body"></span>
+                  </div>
+
+                  <div class="reverso-link-wrap" id="card-reverso-wrap" style="display: none;">
+                    <button class="text-button reverso-lookup-btn" id="card-reverso-btn">
+                      <span>Look up on Reverso Context</span> <span class="external">↗</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Bottom Actions -->
+              <div class="review-actions-area">
+                <!-- Reveal Button (Initial State) -->
+                <div id="reveal-area">
+                  <button class="button button-primary reveal-button" id="reveal-btn">
+                    <span>Reveal answer</span> <kbd class="kbd-hint">Space</kbd>
+                  </button>
+                </div>
+
+                <!-- 4 SM-2 Evaluation Buttons (Revealed State) -->
+                <div id="rating-area" style="display: none;">
+                  <div class="rating-buttons-grid">
+                    <button class="rating-btn rating-again" data-rating="again">
+                      <span class="rating-name">Again</span>
+                      <span class="rating-interval" id="interval-again">&lt; 1d</span>
+                      <kbd class="kbd-hint">1</kbd>
+                    </button>
+                    <button class="rating-btn rating-hard" data-rating="hard">
+                      <span class="rating-name">Hard</span>
+                      <span class="rating-interval" id="interval-hard">1d</span>
+                      <kbd class="kbd-hint">2</kbd>
+                    </button>
+                    <button class="rating-btn rating-good" data-rating="good">
+                      <span class="rating-name">Good</span>
+                      <span class="rating-interval" id="interval-good">4d</span>
+                      <kbd class="kbd-hint">3</kbd>
+                    </button>
+                    <button class="rating-btn rating-easy" data-rating="easy">
+                      <span class="rating-name">Easy</span>
+                      <span class="rating-interval" id="interval-easy">7d</span>
+                      <kbd class="kbd-hint">4</kbd>
+                    </button>
+                  </div>
+                  <div class="review-nav-bottom">
+                    <button class="text-button" id="review-prev-btn" style="visibility: hidden;">
+                      <span>←</span> Previous card
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Review Session Complete Screen -->
+            <div class="review-complete-wrap" id="review-complete-screen" style="display: none;">
+              <div class="review-complete-card panel">
+                <div class="complete-icon">✓</div>
+                <h2>Session complete!</h2>
+                <p class="muted">Great job reviewing your vocabulary. Your progress has been updated in the spaced repetition schedule.</p>
+
+                <div class="complete-stats-grid">
+                  <div class="complete-stat">
+                    <strong id="complete-total-count">0</strong>
+                    <span>Reviewed</span>
+                  </div>
+                  <div class="complete-stat">
+                    <strong id="complete-again-count" style="color: var(--danger);">0</strong>
+                    <span>Again</span>
+                  </div>
+                  <div class="complete-stat">
+                    <strong id="complete-hard-count" style="color: var(--warning);">0</strong>
+                    <span>Hard</span>
+                  </div>
+                  <div class="complete-stat">
+                    <strong id="complete-good-count" style="color: var(--primary);">0</strong>
+                    <span>Good</span>
+                  </div>
+                  <div class="complete-stat">
+                    <strong id="complete-easy-count" style="color: var(--success);">0</strong>
+                    <span>Easy</span>
+                  </div>
+                </div>
+
+                <div class="complete-actions">
+                  <button class="button button-secondary" id="complete-dashboard-btn">Back to dashboard</button>
+                  <button class="button button-primary" id="complete-more-btn">Review more</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ALL WORDS VIEW -->
+          <section id="all-view" class="view">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Your collection</p>
+                <h1 id="collection-heading">All words</h1>
+                <p class="muted" id="collection-subtitle"></p>
+              </div>
+              <button class="button button-primary" id="add-word-list">+ Add word</button>
+            </div>
+
+            <!-- Enhanced Toolbar with Learning State Filter -->
+            <div class="toolbar">
+              <label class="search-field">
+                <span>⌕</span>
+                <input id="search-input" type="search" placeholder="Search words, translations, notes..." />
+              </label>
+              <select id="state-filter" aria-label="Filter by learning state">
+                <option value="">All states</option>
+                <option value="due">Due today</option>
+                <option value="new">New</option>
+                <option value="learning">Learning</option>
+                <option value="review">Review</option>
+                <option value="mastered">Mastered (21d+)</option>
+              </select>
+              <select id="language-filter" aria-label="Filter by language pair"><option value="">All language pairs</option></select>
+              <select id="tag-filter" aria-label="Filter by tag"><option value="">All tags</option></select>
+              <select id="sort-select" aria-label="Sort vocabulary">
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="az">Word A–Z</option>
+                <option value="za">Word Z–A</option>
+                <option value="due">Next review date</option>
+                <option value="most-reviewed">Most reviewed</option>
+                <option value="least-reviewed">Least reviewed</option>
+              </select>
+            </div>
+
+            <!-- Bulk Actions Bar -->
+            <div class="bulk-bar" id="bulk-bar" style="display: none;">
+              <div class="bulk-left">
+                <input type="checkbox" id="bulk-select-all" aria-label="Select all words" />
+                <span id="bulk-count-label">0 words selected</span>
+              </div>
+              <div class="bulk-actions">
+                <button class="button button-secondary" id="bulk-add-tag-btn">Add tag</button>
+                <button class="button button-secondary" id="bulk-remove-tag-btn">Remove tag</button>
+                <button class="button button-secondary" id="bulk-toggle-fav-btn">Toggle favorite</button>
+                <button class="button button-secondary" id="bulk-export-btn">Export selected</button>
+                <button class="button button-danger" id="bulk-delete-btn">Delete selected</button>
+                <button class="text-button" id="bulk-cancel-btn">Cancel</button>
+              </div>
+            </div>
+
+            <div id="collection-list" class="collection-list"></div>
+          </section>
+
+          <!-- FAVORITES VIEW -->
+          <section id="favorites-view" class="view">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Your picks</p>
+                <h1>Favorites</h1>
+                <p class="muted">Words you want close at hand.</p>
+              </div>
+            </div>
+            <div id="favorites-list" class="collection-list"></div>
+          </section>
+
+          <!-- TAGS VIEW -->
+          <section id="tags-view" class="view">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Organize</p>
+                <h1>Tags</h1>
+                <p class="muted">Browse your collection by a theme or topic.</p>
+              </div>
+            </div>
+            <div id="tag-grid" class="tag-grid"></div>
+          </section>
+
+          <!-- TRANSFER VIEW (Import / Export) -->
+          <section id="transfer-view" class="view">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Take your data with you</p>
+                <h1>Import / export</h1>
+                <p class="muted">Move vocabulary in and out without losing its shape or review progress.</p>
+              </div>
+            </div>
+            <div class="transfer-grid">
+              <div class="transfer-card">
+                <span class="transfer-icon">↓</span>
+                <h2>Import vocabulary</h2>
+                <p>Bring in Anki CSV, TSV, or JSON exports. Spaced repetition progress is cleanly preserved.</p>
+                <button class="button button-primary" id="open-import">Choose a file</button>
+                <input id="import-file" type="file" accept=".csv,.tsv,.txt,.json,text/csv,text/tab-separated-values,application/json" hidden />
+              </div>
+              <div class="transfer-card">
+                <span class="transfer-icon">↑</span>
+                <h2>Export vocabulary</h2>
+                <p>Download your complete collection including review history and SRS schedule.</p>
+                <div class="export-buttons">
+                  <button class="button button-secondary" data-export="csv">CSV</button>
+                  <button class="button button-secondary" data-export="tsv">TSV</button>
+                  <button class="button button-secondary" data-export="json">JSON</button>
+                </div>
+              </div>
+            </div>
+            <div class="callout">
+              <strong>Tip for Anki</strong>
+              <span>Export notes as “Notes in plain text” if you want to remove styling. Lexicon safely imports all learning history and intervals.</span>
+            </div>
+          </section>
+
+          <!-- SETTINGS VIEW (Dedicated Learning & Appearance Settings) -->
+          <section id="settings-view" class="view">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Preferences</p>
+                <h1>Settings</h1>
+                <p class="muted">Customize your spaced repetition schedule, session sizes, and workflow.</p>
+              </div>
+            </div>
+
+            <!-- Learning Settings Panel -->
+            <div class="panel settings-panel" style="margin-bottom: var(--space-24);">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Spaced repetition</p>
+                  <h2>Learning &amp; review settings</h2>
+                </div>
+              </div>
+              <form id="learning-settings-form">
+                <div class="setting-row">
+                  <div>
+                    <strong>Daily new-word limit</strong>
+                    <p>Maximum number of new cards introduced into reviews per day.</p>
+                  </div>
+                  <input type="number" id="setting-daily-new" min="1" max="100" class="setting-input" />
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <strong>Preferred session size</strong>
+                    <p>Default number of cards per review session.</p>
+                  </div>
+                  <select id="setting-session-size" class="setting-select">
+                    <option value="10">10 words</option>
+                    <option value="20">20 words</option>
+                    <option value="30">30 words</option>
+                    <option value="all">All available</option>
+                  </select>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <strong>Default language pair</strong>
+                    <p>Pre-populates source and target languages for new entries.</p>
+                  </div>
+                  <div style="display: flex; gap: 8px;">
+                    <input type="text" id="setting-lang-from" placeholder="From" style="width: 100px;" />
+                    <span style="align-self: center;">→</span>
+                    <input type="text" id="setting-lang-to" placeholder="To" style="width: 100px;" />
+                  </div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <strong>Review algorithm</strong>
+                    <p>SuperMemo SM-2 algorithm with dynamic ease factors and lapse handling.</p>
+                  </div>
+                  <span class="badge" style="font-family: var(--font-mono);">SM-2</span>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <strong>Daily review target</strong>
+                    <p>Target number of cards to complete each day.</p>
+                  </div>
+                  <input type="number" id="setting-daily-target" min="5" max="200" class="setting-input" />
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <strong>Show example sentence on card front</strong>
+                    <p>Display the example sentence before revealing the translation.</p>
+                  </div>
+                  <input type="checkbox" id="setting-show-example-front" />
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <strong>Hide translations initially</strong>
+                    <p>Ensure answers remain covered until you press reveal.</p>
+                  </div>
+                  <input type="checkbox" id="setting-hide-translation" />
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <strong>Keyboard shortcuts</strong>
+                    <p>Use Space to reveal, 1-4 to rate, and arrows to navigate.</p>
+                  </div>
+                  <input type="checkbox" id="setting-keyboard-shortcuts" />
+                </div>
+                <div class="setting-row" style="justify-content: flex-end;">
+                  <button type="submit" class="button button-primary">Save learning settings</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Appearance & Local Storage Panel -->
+            <div class="settings-panel panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">System</p>
+                  <h2>Environment</h2>
+                </div>
+              </div>
+              <div class="setting-row">
+                <div>
+                  <strong>Appearance</strong>
+                  <p>Switch between a light and dark workspace.</p>
+                </div>
+                <button class="button button-secondary" id="theme-setting">Toggle theme</button>
+              </div>
+              <div class="setting-row">
+                <div>
+                  <strong>Local storage</strong>
+                  <p id="storage-count">Your data stays in this browser.</p>
+                </div>
+                <button class="button button-danger" id="clear-data">Clear all data</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <!-- WORD EDIT/CREATE MODAL -->
+    <div class="modal-backdrop" id="word-modal" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="word-modal-title">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Vocabulary entry</p>
+            <h2 id="word-modal-title">Add a word</h2>
+          </div>
+          <button class="icon-button close-modal" aria-label="Close">✕</button>
+        </div>
+        <form id="word-form">
+          <input type="hidden" id="entry-id" />
+          <div class="form-grid">
+            <label class="field field-wide">
+              <span>Word / expression <b>*</b></span>
+              <input id="word" required maxlength="200" placeholder="e.g. serendipity" />
+            </label>
+            <label class="field field-wide">
+              <span>Translation <b>*</b></span>
+              <input id="translation" required maxlength="200" placeholder="e.g. heureuse découverte" />
+            </label>
+            <label class="field">
+              <span>From</span>
+              <input id="language-from" maxlength="40" placeholder="English" />
+            </label>
+            <label class="field">
+              <span>To</span>
+              <input id="language-to" maxlength="40" placeholder="Arabic" />
+            </label>
+            <label class="field field-wide">
+              <span>Example sentence</span>
+              <textarea id="example" rows="2" placeholder="A sentence that gives the word some life."></textarea>
+            </label>
+            <label class="field field-wide">
+              <span>Example translation</span>
+              <textarea id="example-translation" rows="2" placeholder="Its meaning in your language."></textarea>
+            </label>
+            <label class="field field-wide">
+              <span>Tags <small>Separate with commas</small></span>
+              <input id="tags" placeholder="travel, reading, b2" />
+            </label>
+            <label class="field field-wide">
+              <span>Notes</span>
+              <textarea id="notes" rows="2" placeholder="A memory, nuance, or related word."></textarea>
+            </label>
+            <label class="field field-wide">
+              <span>Reverso Context URL <small>Optional — saved links are exact</small></span>
+              <input id="source-url" type="url" placeholder="https://context.reverso.net/translation/..." />
+            </label>
+          </div>
+          <div class="form-footer">
+            <span class="required-note">* Required fields</span>
+            <div>
+              <button type="button" class="button button-secondary close-modal">Cancel</button>
+              <button type="submit" class="button button-primary">Save word</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- VOCABULARY DETAIL MODAL -->
+    <div class="modal-backdrop" id="detail-modal" aria-hidden="true">
+      <div class="modal detail-modal" role="dialog" aria-modal="true" aria-labelledby="detail-word-title">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow" id="detail-kicker">Word details</p>
+            <h2 id="detail-word-title">Word</h2>
+          </div>
+          <button class="icon-button close-modal" aria-label="Close">✕</button>
+        </div>
+        <div class="detail-body" id="detail-content"></div>
+      </div>
+    </div>
+
+    <!-- BULK TAG PROMPT MODAL -->
+    <div class="modal-backdrop" id="bulk-tag-modal" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-tag-title" style="max-width: 420px;">
+        <div class="modal-header">
+          <h2 id="bulk-tag-title">Add tag to selected</h2>
+          <button class="icon-button close-modal" aria-label="Close">✕</button>
+        </div>
+        <form id="bulk-tag-form">
+          <div class="field">
+            <label for="bulk-tag-input"><span>Tag name</span></label>
+            <input id="bulk-tag-input" required placeholder="e.g. grammar, idioms" />
+          </div>
+          <div class="form-footer">
+            <div></div>
+            <div>
+              <button type="button" class="button button-secondary close-modal">Cancel</button>
+              <button type="submit" class="button button-primary">Apply tag</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- BULK REMOVE TAG MODAL -->
+    <div class="modal-backdrop" id="bulk-untag-modal" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-untag-title" style="max-width: 420px;">
+        <div class="modal-header">
+          <h2 id="bulk-untag-title">Remove tag from selected</h2>
+          <button class="icon-button close-modal" aria-label="Close">✕</button>
+        </div>
+        <form id="bulk-untag-form">
+          <div class="field">
+            <label for="bulk-untag-select"><span>Select tag to remove</span></label>
+            <select id="bulk-untag-select"></select>
+          </div>
+          <div class="form-footer">
+            <div></div>
+            <div>
+              <button type="button" class="button button-secondary close-modal">Cancel</button>
+              <button type="submit" class="button button-danger">Remove tag</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- IMPORT MODAL -->
+    <div class="modal-backdrop" id="import-modal" aria-hidden="true">
+      <div class="modal import-modal" role="dialog" aria-modal="true" aria-labelledby="import-title">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Data migration</p>
+            <h2 id="import-title">Import vocabulary</h2>
+          </div>
+          <button class="icon-button close-modal" aria-label="Close">✕</button>
+        </div>
+        <div id="import-step-content"></div>
+      </div>
+    </div>
+
+    <!-- TOAST REGION -->
+    <div class="toast-region" id="toast-region" aria-live="polite"></div>
+
+    <!-- SCRIPTS -->
+    <script src="srs.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
