@@ -64,6 +64,8 @@
   --shadow: var(--shadow-modal);
 }
 
+.cloud-panel{margin-top:24px}.sync-status{display:inline-flex;align-items:center;padding:4px 8px;border-radius:4px;background:#f4f4f5;color:#71717a;font:500 11px "JetBrains Mono",monospace}.sync-status[data-status=connected]{background:#dcfce7;color:#166534}.sync-status[data-status=syncing],.sync-status[data-status=connecting]{background:#ede9fe;color:#6d28d9}.sync-status[data-status=error]{background:#fee2e2;color:#991b1b}.sync-status[data-status=offline]{background:#fef3c7;color:#92400e}.cloud-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.firebase-config-row{border-top:1px solid var(--line);border-bottom:0}
+
 /* Dark Theme */
 body.dark {
   --primary: #FAFAFA;

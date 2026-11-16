@@ -80,4 +80,15 @@ To enable GitHub Pages in your repository:
 2. In your repository, go to **Settings** → **Pages**.
 3. Under **Build and deployment** → **Source**, select **GitHub Actions**.
 4. Future pushes to `main` or `master` will automatically run tests and publish the live site.
+
+## Optional Firebase sync
+
+The app remains fully usable offline and keeps `localStorage` as the UI data source. To enable Google sign-in and Firestore synchronization:
+
+1. Create a Firebase web app in the Firebase console and enable Google Authentication.
+2. Deploy [firestore.rules](./firestore.rules).
+3. The provided public web configuration is included in the client. The **Override config** action is available if you need to use another Firebase project. Never paste service-account credentials.
+4. Sign in with Google.
+
+Cloud data is stored per account at `/users/{uid}/vocabulary/{wordId}`, `/users/{uid}/reviewHistory/{historyId}`, and `/users/{uid}/settings/preferences`. Writes are chunked below Firestore's batch limit. Local account namespaces and deletion tombstones prevent data leaking between accounts or deleted records reappearing. Conflict resolution uses a monotonic per-record revision, then ISO timestamp and device ID as deterministic tie-breakers. Firebase SDK configuration and console deployment are not claimed as completed by this static project.
 # reverso

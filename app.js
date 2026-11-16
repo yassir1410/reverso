@@ -6,7 +6,11 @@
 const STORAGE_KEY = "lexicon-vocabulary-v1";
 const HISTORY_KEY = "lexicon-review-history-v1";
 const SETTINGS_KEY = "lexicon-settings-v1";
+const DELETED_KEY = "lexicon-deleted-v1";
 const THEME_KEY = "lexicon-theme";
+const ACCOUNT_KEY = "lexicon-active-account-v1";
+let activeAccountId = localStorage.getItem(ACCOUNT_KEY) || "local";
+let isApplyingSync = false;
 
 const coreFields = [
   "word", "translation", "example", "example_translation",
@@ -53,6 +57,7 @@ const defaultSettings = {
 let entries = loadEntries();
 let reviewHistory = loadHistory();
 let settings = loadSettings();
+let deletedEntries = loadDeletedEntries();
 let activeView = "dashboard";
 // Import State
 let importedRows = [];
@@ -85,7 +90,7 @@ const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice
    ========================================================================== */
 function loadEntries() {
   try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const raw = JSON.parse(localStorage.getItem(`${STORAGE_KEY}:${activeAccountId}`) || (activeAccountId === "local" ? localStorage.getItem(STORAGE_KEY) : "[]") || "[]");
     const todayStr = SRS.formatDateToDayString();
     return raw.map((entry) => SRS.normalizeEntry(entry, todayStr));
   } catch (error) {
@@ -95,12 +100,13 @@ function loadEntries() {
 }
 
 function persistEntries() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  localStorage.setItem(`${STORAGE_KEY}:${activeAccountId}`, JSON.stringify(entries));
+  queueCloudSync();
 }
 
 function loadHistory() {
   try {
-    return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    return JSON.parse(localStorage.getItem(`${HISTORY_KEY}:${activeAccountId}`) || (activeAccountId === "local" ? localStorage.getItem(HISTORY_KEY) : "[]") || "[]");
   } catch (error) {
     console.error("Could not load review history:", error);
     return [];
@@ -108,12 +114,13 @@ function loadHistory() {
 }
 
 function persistHistory() {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(reviewHistory));
+  localStorage.setItem(`${HISTORY_KEY}:${activeAccountId}`, JSON.stringify(reviewHistory));
+  queueCloudSync();
 }
 
 function loadSettings() {
   try {
-    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+    const saved = JSON.parse(localStorage.getItem(`${SETTINGS_KEY}:${activeAccountId}`) || (activeAccountId === "local" ? localStorage.getItem(SETTINGS_KEY) : "{}") || "{}");
     const merged = { ...defaultSettings, ...saved };
     // Migrate default goal language to Arabic if unset or legacy default
     if (!saved.default_language_to || saved.default_language_to === "French") {
@@ -127,8 +134,141 @@ function loadSettings() {
 }
 
 function persistSettings() {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  localStorage.setItem(`${SETTINGS_KEY}:${activeAccountId}`, JSON.stringify(settings));
+  queueCloudSync();
 }
+
+function loadDeletedEntries() {
+  try {
+    return JSON.parse(localStorage.getItem(`${DELETED_KEY}:${activeAccountId}`) || "[]");
+  } catch (error) {
+    console.error("Could not load deletion tombstones:", error);
+    return [];
+  }
+}
+
+function persistDeletedEntries() {
+  localStorage.setItem(`${DELETED_KEY}:${activeAccountId}`, JSON.stringify(deletedEntries));
+  queueCloudSync();
+}
+
+function syncSnapshot() {
+  return { entries: [...entries, ...deletedEntries], reviewHistory: [...reviewHistory], settings: { ...settings } };
+}
+
+function queueCloudSync() {
+  if (!isApplyingSync && window.FirebaseSync && window.FirebaseSync.getUser() && window.LexiconSyncAdapter) {
+    window.FirebaseSync.queueSync(window.LexiconSyncAdapter.snapshot, window.LexiconSyncAdapter.applyRemote);
+  }
+}
+
+function applySyncedData(data) {
+  isApplyingSync = true;
+  const syncedEntries = (data.entries || []);
+  deletedEntries = syncedEntries.filter((entry) => entry._sync?.deletedAt);
+  entries = syncedEntries.filter((entry) => !entry._sync?.deletedAt).map((entry) => {
+    const copy = { ...entry };
+    delete copy._sync;
+    return SRS.normalizeEntry(copy, SRS.formatDateToDayString());
+  });
+  reviewHistory = (data.reviewHistory || []).map((item) => {
+    const copy = { ...item };
+    delete copy._sync;
+    return copy;
+  });
+  settings = { ...defaultSettings, ...(data.settings || {}) };
+  persistEntries();
+  persistHistory();
+  persistSettings();
+  persistDeletedEntries();
+  render();
+
+  function renderSyncStatus(status, detail = "") {
+    const badge = $("sync-status");
+    const detailNode = $("sync-detail");
+    if (!badge || !detailNode) return;
+    const labels = { connected: "Synced", syncing: "Synchronizing", connecting: "Connecting", offline: "Offline", disconnected: "Local only", error: "Sync error" };
+    badge.textContent = labels[status] || status;
+    badge.dataset.status = status;
+    detailNode.textContent = detail || (status === "offline" ? "Changes stay safe in this browser and will sync later." : "Cloud sync is optional.");
+  }
+
+  async function switchToAccount(user) {
+    if (!user) {
+      activeAccountId = "local";
+      localStorage.setItem(ACCOUNT_KEY, activeAccountId);
+      entries = loadEntries();
+      reviewHistory = loadHistory();
+      settings = loadSettings();
+      deletedEntries = loadDeletedEntries();
+      render();
+      return;
+    }
+    const beforeLogin = syncSnapshot();
+    activeAccountId = user.uid;
+    localStorage.setItem(ACCOUNT_KEY, activeAccountId);
+    const accountSnapshot = syncSnapshot();
+    const unique = (items) => [...new Map(items.map((item) => [item.id, item])).values()];
+    entries = loadEntries();
+    reviewHistory = loadHistory();
+    settings = loadSettings();
+    deletedEntries = loadDeletedEntries();
+    try {
+      await FirebaseSync.sync({
+        entries: unique([...beforeLogin.entries, ...accountSnapshot.entries]),
+        reviewHistory: unique([...beforeLogin.reviewHistory, ...accountSnapshot.reviewHistory]),
+        settings: { ...accountSnapshot.settings, ...beforeLogin.settings }
+      }, applySyncedData);
+    } catch (error) {
+      showToast(`Cloud sync unavailable: ${error.message}`);
+      render();
+    }
+  }
+
+  if (window.FirebaseSync) {
+    FirebaseSync.onStatusChange(renderSyncStatus);
+    FirebaseSync.onAuthChange((user) => {
+      $("account-label").textContent = user ? (user.email || "Signed in with Google") : "Not signed in";
+      $("google-sign-in").hidden = Boolean(user);
+      $("google-sign-out").hidden = !user;
+      $("sync-now").hidden = !user;
+      switchToAccount(user);
+    });
+    $("google-sign-in")?.addEventListener("click", async () => {
+      try {
+        if (!FirebaseSync.isConfigured()) {
+          showToast("Configure Firebase before signing in.");
+          setView("settings");
+          return;
+        }
+        await FirebaseSync.init();
+        await FirebaseSync.signInWithGoogle();
+      } catch (error) {
+        showToast(error.message || "Google sign-in failed.");
+      }
+    });
+    $("google-sign-out")?.addEventListener("click", () => FirebaseSync.signOut().catch((error) => showToast(error.message)));
+    $("sync-now")?.addEventListener("click", () => FirebaseSync.sync(syncSnapshot, applySyncedData).catch(() => {}));
+    $("configure-firebase")?.addEventListener("click", () => {
+      const raw = prompt("Paste your Firebase web app configuration as JSON. Do not paste service-account credentials.");
+      if (!raw) return;
+      try {
+        const config = JSON.parse(raw);
+        FirebaseSync.saveConfig(config);
+        showToast("Firebase configuration saved locally.");
+        FirebaseSync.init();
+      } catch (_) {
+        showToast("That configuration is not valid JSON.");
+      }
+    });
+  }
+  isApplyingSync = false;
+}
+
+window.LexiconSyncAdapter = {
+  snapshot: syncSnapshot,
+  applyRemote: applySyncedData
+};
 
 function showToast(message) {
   const toast = document.createElement("div");
@@ -785,8 +925,15 @@ function bulkDelete() {
     return;
   }
 
+  const removedEntries = entries.filter((entry) => selectedIds.has(entry.id));
   entries = entries.filter((entry) => !selectedIds.has(entry.id));
+  deletedEntries.push(...[...selectedIds].map((id) => {
+    const previous = removedEntries.find((entry) => entry.id === id);
+    const now = new Date().toISOString();
+    return { id, _sync: { revision: Number(previous?._sync?.revision || 0) + 1, updatedAt: now, deviceId: "local", deletedAt: now, pending: true } };
+  }));
   persistEntries();
+  persistDeletedEntries();
   selectedIds.clear();
   render();
   showToast(`Deleted ${count} ${count === 1 ? 'word' : 'words'}`);
@@ -1585,9 +1732,16 @@ document.addEventListener("click", (event) => {
   }
 
   if (target.dataset.delete && confirm("Delete this word?")) {
+    const previous = entries.find((entry) => entry.id === target.dataset.delete);
     entries = entries.filter((entry) => entry.id !== target.dataset.delete);
+    const deletedAt = new Date().toISOString();
+    deletedEntries.push({
+      id: target.dataset.delete,
+      _sync: { revision: Number(previous?._sync?.revision || 0) + 1, updatedAt: deletedAt, deviceId: "local", deletedAt, pending: true }
+    });
     selectedIds.delete(target.dataset.delete);
     persistEntries();
+    persistDeletedEntries();
     render();
     showToast("Word deleted");
   }
@@ -1645,9 +1799,11 @@ document.addEventListener("click", (event) => {
   if (target.id === "clear-data" && confirm("Delete all vocabulary and review history? This cannot be undone.")) {
     entries = [];
     reviewHistory = [];
+    deletedEntries = [];
     selectedIds.clear();
     persistEntries();
     persistHistory();
+    persistDeletedEntries();
     render();
     showToast("All data cleared");
   }
