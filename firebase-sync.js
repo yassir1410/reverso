@@ -30,6 +30,7 @@
   let status = "offline";
   let statusDetail = "Not configured";
   let initialized = false;
+  let initPromise = null;
   let authBound = false;
   let listeners = [];
   let authListeners = [];
@@ -94,11 +95,13 @@
 
   async function init() {
     if (initialized) return Boolean(auth && db);
+    if (initPromise) return initPromise;
     if (!isConfigured()) {
       setStatus("offline", "Firebase configuration is missing.");
       return false;
     }
-    try {
+    initPromise = (async () => {
+      try {
       setStatus("connecting", "Connecting to Firebase...");
       const sdk = await loadScripts();
       firebaseApp = sdk.apps.length ? sdk.app() : sdk.initializeApp(getConfig());
@@ -121,11 +124,15 @@
       }
       initialized = true;
       return true;
-    } catch (error) {
-      setStatus("error", error.message || "Firebase initialization failed.");
-      console.error("Firebase initialization failed:", error);
-      return false;
-    }
+      } catch (error) {
+        setStatus("error", error.message || "Firebase initialization failed.");
+        console.error("Firebase initialization failed:", error);
+        return false;
+      } finally {
+        initPromise = null;
+      }
+    })();
+    return initPromise;
   }
 
   async function signInWithGoogle() {
@@ -134,6 +141,18 @@
     // Redirect is reliable on GitHub Pages because it is not subject to
     // popup blockers or delayed user-gesture restrictions.
     return auth.signInWithRedirect(provider);
+  }
+
+  async function handleRedirectResult() {
+    if (!await init() || !auth) return null;
+    try {
+      const result = await auth.getRedirectResult();
+      return result?.user || null;
+    } catch (error) {
+      setStatus("error", error.message || "Google sign-in failed.");
+      console.error("Google redirect sign-in failed:", error);
+      throw error;
+    }
   }
 
   async function signOut() {
@@ -255,7 +274,7 @@
   }
 
   return {
-    getConfig, saveConfig, isConfigured, init, signInWithGoogle, signOut, sync, queueSync,
+    getConfig, saveConfig, isConfigured, init, signInWithGoogle, handleRedirectResult, signOut, sync, queueSync,
     onStatusChange, onAuthChange, getUser: () => currentUser, getStatus: () => status,
     getStatusDetail: () => statusDetail, compareRecords, withSyncMetadata
   };

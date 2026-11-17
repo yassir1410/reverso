@@ -261,7 +261,9 @@ function applySyncedData(data) {
         showToast("That configuration is not valid JSON.");
       }
     });
-    FirebaseSync.init().catch((error) => renderSyncStatus("error", error.message || "Firebase initialization failed."));
+    FirebaseSync.init()
+      .then(() => FirebaseSync.handleRedirectResult())
+      .catch((error) => renderSyncStatus("error", error.message || "Firebase initialization failed."));
   }
   isApplyingSync = false;
 }
