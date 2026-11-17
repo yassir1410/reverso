@@ -131,7 +131,9 @@
   async function signInWithGoogle() {
     if (!await init()) throw new Error("Firebase is not configured. Add the web app configuration first.");
     const provider = new window.firebase.auth.GoogleAuthProvider();
-    return auth.signInWithPopup(provider);
+    // Redirect is reliable on GitHub Pages because it is not subject to
+    // popup blockers or delayed user-gesture restrictions.
+    return auth.signInWithRedirect(provider);
   }
 
   async function signOut() {

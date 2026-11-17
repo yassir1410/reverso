@@ -241,9 +241,9 @@ function applySyncedData(data) {
           setView("settings");
           return;
         }
-        await FirebaseSync.init();
         await FirebaseSync.signInWithGoogle();
       } catch (error) {
+        renderSyncStatus("error", error.message || "Google sign-in failed.");
         showToast(error.message || "Google sign-in failed.");
       }
     });
@@ -261,6 +261,7 @@ function applySyncedData(data) {
         showToast("That configuration is not valid JSON.");
       }
     });
+    FirebaseSync.init().catch((error) => renderSyncStatus("error", error.message || "Firebase initialization failed."));
   }
   isApplyingSync = false;
 }
