@@ -193,6 +193,7 @@ function renderSyncStatus(status, detail = "") {
   badge.textContent = labels[status] || status;
   badge.dataset.status = status;
   detailNode.textContent = detail || (status === "offline" ? "Changes stay safe in this browser and will sync later." : "Cloud sync is optional.");
+  if ($("account-popover-status")) $("account-popover-status").textContent = labels[status] || status;
 }
 
 async function switchToAccount(user) {
@@ -230,14 +231,55 @@ window.LexiconSyncAdapter = {
   applyRemote: applySyncedData
 };
 
+function updateTopAccount(user) {
+  const signedIn = Boolean(user);
+  const name = user?.displayName || user?.email?.split("@")[0] || "Not signed in";
+  const email = user?.email || "Sync your vocabulary";
+  const initial = signedIn ? (name.trim().charAt(0) || "?") : "?";
+  $("account-avatar").textContent = initial;
+  $("account-popover-avatar").textContent = initial;
+  $("account-trigger-label").textContent = signedIn ? name : "Sign in";
+  $("account-trigger-detail").textContent = signedIn ? email : "Sync your vocabulary";
+  $("account-popover-name").textContent = signedIn ? name : "Not signed in";
+  $("account-popover-email").textContent = signedIn ? email : "Cloud sync is optional";
+  $("top-google-sign-in").hidden = signedIn;
+  $("top-sync-now").hidden = !signedIn;
+  $("top-google-sign-out").hidden = !signedIn;
+  $("account-popover-status").textContent = signedIn ? "Cloud sync available" : "Local only";
+  $("account-status-dot").style.background = signedIn ? "var(--success)" : "var(--muted)";
+}
+
 if (window.FirebaseSync) {
   FirebaseSync.onStatusChange(renderSyncStatus);
   FirebaseSync.onAuthChange((user) => {
     $("account-label").textContent = user ? (user.email || "Signed in with Google") : "Not signed in";
+    updateTopAccount(user);
     $("google-sign-in").hidden = Boolean(user);
     $("google-sign-out").hidden = !user;
     $("sync-now").hidden = !user;
     switchToAccount(user);
+  });
+  $("account-trigger")?.addEventListener("click", () => {
+    const trigger = $("account-trigger");
+    const popover = $("account-popover");
+    const isOpen = trigger.getAttribute("aria-expanded") === "true";
+    trigger.setAttribute("aria-expanded", String(!isOpen));
+    popover.hidden = isOpen;
+  });
+  $("top-google-sign-in")?.addEventListener("click", () => $("google-sign-in").click());
+  $("top-google-sign-out")?.addEventListener("click", () => {
+    FirebaseSync.signOut()
+      .catch((error) => showToast(error.message))
+      .finally(() => closeAccountMenu());
+  });
+  $("top-sync-now")?.addEventListener("click", () => {
+    FirebaseSync.sync(syncSnapshot, applySyncedData)
+      .catch((error) => showToast(error.message))
+      .finally(() => closeAccountMenu());
+  });
+  $("top-account-settings")?.addEventListener("click", () => {
+    closeAccountMenu();
+    setView("settings");
   });
   $("google-sign-in")?.addEventListener("click", async () => {
     try {
@@ -269,6 +311,11 @@ if (window.FirebaseSync) {
   FirebaseSync.init()
     .then(() => FirebaseSync.handleRedirectResult())
     .catch((error) => renderSyncStatus("error", error.message || "Firebase initialization failed."));
+}
+
+function closeAccountMenu() {
+  $("account-trigger")?.setAttribute("aria-expanded", "false");
+  if ($("account-popover")) $("account-popover").hidden = true;
 }
 
 function showToast(message) {
@@ -1666,6 +1713,7 @@ if (localStorage.getItem(THEME_KEY) === "dark") {
    Global Event Listeners & Keyboard Shortcuts
    ========================================================================== */
 document.addEventListener("click", (event) => {
+  if (!event.target.closest("#account-menu")) closeAccountMenu();
   const target = event.target.closest("button,[data-view],[data-tag],[data-detail],[data-select]");
   if (!target) return;
 

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f4f4f5" />
     <title>Lexicon — Personal vocabulary</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=account-menu-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -32,6 +32,32 @@
           <div class="top-actions">
             <button class="icon-button" id="theme-toggle" aria-label="Toggle dark mode">☾</button>
             <button class="button button-primary" id="add-word-top"><span>+</span> Add word</button>
+            <div class="account-menu" id="account-menu">
+              <button class="account-trigger" id="account-trigger" aria-expanded="false" aria-haspopup="menu">
+                <span class="account-avatar" id="account-avatar" aria-hidden="true">?</span>
+                <span class="account-trigger-copy">
+                  <span class="account-trigger-label" id="account-trigger-label">Sign in</span>
+                  <span class="account-trigger-detail" id="account-trigger-detail">Sync your vocabulary</span>
+                </span>
+                <span class="account-chevron" aria-hidden="true">⌄</span>
+              </button>
+              <div class="account-popover" id="account-popover" role="menu" aria-label="Account menu" hidden>
+                <div class="account-popover-header">
+                  <span class="account-avatar account-avatar-large" id="account-popover-avatar" aria-hidden="true">?</span>
+                  <div>
+                    <strong id="account-popover-name">Not signed in</strong>
+                    <span id="account-popover-email">Cloud sync is optional</span>
+                  </div>
+                </div>
+                <div class="account-popover-status"><span class="status-dot" id="account-status-dot"></span><span id="account-popover-status">Local only</span></div>
+                <div class="account-popover-actions">
+                  <button class="account-menu-item account-menu-primary" id="top-google-sign-in" role="menuitem">Continue with Google</button>
+                  <button class="account-menu-item" id="top-sync-now" role="menuitem" hidden>Sync now</button>
+                  <button class="account-menu-item" id="top-account-settings" role="menuitem">Account settings</button>
+                  <button class="account-menu-item account-menu-danger" id="top-google-sign-out" role="menuitem" hidden>Sign out</button>
+                </div>
+              </div>
+            </div>
           </div>
         </header>
 

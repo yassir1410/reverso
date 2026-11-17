@@ -301,6 +301,169 @@ body.dark .brand-mark {
   gap: var(--space-12);
 }
 
+.account-menu {
+  position: relative;
+}
+
+.account-trigger {
+  min-height: 40px;
+  max-width: 240px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 4px 8px 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--rounded-md);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+}
+
+.account-trigger:hover,
+.account-trigger[aria-expanded="true"] {
+  background: var(--surface-soft);
+  border-color: var(--muted);
+}
+
+.account-avatar {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--neutral);
+  font-size: var(--text-12);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.account-trigger-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.account-trigger-label,
+.account-trigger-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-trigger-label {
+  font-size: var(--text-12);
+  font-weight: 600;
+}
+
+.account-trigger-detail {
+  max-width: 150px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.account-chevron {
+  margin-left: 2px;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.account-popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(300px, calc(100vw - 32px));
+  padding: var(--space-12);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--rounded-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.account-popover-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-4);
+}
+
+.account-avatar-large {
+  width: 36px;
+  height: 36px;
+  flex-basis: 36px;
+}
+
+.account-popover-header div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.account-popover-header strong,
+.account-popover-header span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-popover-header strong {
+  font-size: var(--text-14);
+}
+
+.account-popover-header div span {
+  color: var(--muted);
+  font-size: var(--text-12);
+}
+
+.account-popover-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: var(--space-8) var(--space-4);
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font: 500 11px var(--font-mono);
+}
+
+.account-popover-actions {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+}
+
+.account-menu-item {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 var(--space-8);
+  border: 0;
+  border-radius: var(--rounded-sm);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: var(--text-14);
+}
+
+.account-menu-item:hover {
+  background: var(--surface-soft);
+}
+
+.account-menu-primary {
+  background: var(--primary);
+  color: var(--neutral);
+  text-align: center;
+}
+
+.account-menu-primary:hover {
+  background: var(--accent-dark);
+}
+
+.account-menu-danger {
+  color: var(--danger);
+}
+
 .icon-button {
   width: 36px;
   height: 36px;
@@ -1368,6 +1531,27 @@ body.dark .toast {
 @media (max-width: 500px) {
   .topbar {
     padding: 0 var(--space-16);
+    gap: var(--space-4);
+  }
+
+  .breadcrumb {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .breadcrumb #page-kicker,
+  .breadcrumb .breadcrumb-slash {
+    display: none;
+  }
+
+  .breadcrumb strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .top-actions {
+    gap: var(--space-4);
   }
 
   .page-wrap {
@@ -1376,8 +1560,33 @@ body.dark .toast {
   }
 
   .top-actions .button {
-    padding: var(--space-8) var(--space-12);
-    font-size: var(--text-12);
+    width: 36px;
+    padding: var(--space-8);
+    font-size: 0;
+  }
+
+  .top-actions .button span {
+    font-size: 18px;
+  }
+
+  .account-trigger {
+    width: 36px;
+    justify-content: center;
+    padding-right: 6px;
+  }
+
+  .account-trigger-copy,
+  .account-chevron {
+    display: none;
+  }
+
+  .review-callout-card {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .review-callout-card .button {
+    width: 100%;
   }
 
   .hero-row h1,
