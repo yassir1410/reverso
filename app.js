@@ -197,32 +197,38 @@ function renderSyncStatus(status, detail = "") {
 }
 
 async function switchToAccount(user) {
-  if (!user) {
-    activeAccountId = "local";
-    localStorage.setItem(ACCOUNT_KEY, activeAccountId);
-    entries = loadEntries();
-    reviewHistory = loadHistory();
-    settings = loadSettings();
-    deletedEntries = loadDeletedEntries();
+  const nextAccountId = user?.uid || "local";
+  if (activeAccountId === nextAccountId) {
     render();
+    if (user) {
+      try {
+        await FirebaseSync.sync(syncSnapshot, applySyncedData);
+      } catch (error) {
+        showToast(`Cloud sync unavailable: ${error.message}`);
+        render();
+      }
+    }
     return;
   }
-  const beforeLogin = syncSnapshot();
-  activeAccountId = user.uid;
+
+  // Never merge the previous account's in-memory data into the next account.
+  // Each account is loaded from its own local namespace, then synchronized
+  // only with the matching /users/{uid} Firestore path.
+  activeAccountId = nextAccountId;
   localStorage.setItem(ACCOUNT_KEY, activeAccountId);
   entries = loadEntries();
   reviewHistory = loadHistory();
   settings = loadSettings();
   deletedEntries = loadDeletedEntries();
-  try {
-    await FirebaseSync.sync({
-      entries: beforeLogin.entries,
-      reviewHistory: beforeLogin.reviewHistory,
-      settings: beforeLogin.settings
-    }, applySyncedData);
-  } catch (error) {
-    showToast(`Cloud sync unavailable: ${error.message}`);
-    render();
+
+  render();
+  if (user) {
+    try {
+      await FirebaseSync.sync(syncSnapshot, applySyncedData);
+    } catch (error) {
+      showToast(`Cloud sync unavailable: ${error.message}`);
+      render();
+    }
   }
 }
 
