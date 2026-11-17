@@ -182,96 +182,94 @@ function applySyncedData(data) {
   persistSettings();
   persistDeletedEntries();
   render();
+  isApplyingSync = false;
+}
 
-  function renderSyncStatus(status, detail = "") {
-    const badge = $("sync-status");
-    const detailNode = $("sync-detail");
-    if (!badge || !detailNode) return;
-    const labels = { connected: "Synced", syncing: "Synchronizing", connecting: "Connecting", offline: "Offline", disconnected: "Local only", error: "Sync error" };
-    badge.textContent = labels[status] || status;
-    badge.dataset.status = status;
-    detailNode.textContent = detail || (status === "offline" ? "Changes stay safe in this browser and will sync later." : "Cloud sync is optional.");
-  }
+function renderSyncStatus(status, detail = "") {
+  const badge = $("sync-status");
+  const detailNode = $("sync-detail");
+  if (!badge || !detailNode) return;
+  const labels = { connected: "Synced", syncing: "Synchronizing", connecting: "Connecting", offline: "Offline", disconnected: "Local only", error: "Sync error" };
+  badge.textContent = labels[status] || status;
+  badge.dataset.status = status;
+  detailNode.textContent = detail || (status === "offline" ? "Changes stay safe in this browser and will sync later." : "Cloud sync is optional.");
+}
 
-  async function switchToAccount(user) {
-    if (!user) {
-      activeAccountId = "local";
-      localStorage.setItem(ACCOUNT_KEY, activeAccountId);
-      entries = loadEntries();
-      reviewHistory = loadHistory();
-      settings = loadSettings();
-      deletedEntries = loadDeletedEntries();
-      render();
-      return;
-    }
-    const beforeLogin = syncSnapshot();
-    activeAccountId = user.uid;
+async function switchToAccount(user) {
+  if (!user) {
+    activeAccountId = "local";
     localStorage.setItem(ACCOUNT_KEY, activeAccountId);
-    const accountSnapshot = syncSnapshot();
-    const unique = (items) => [...new Map(items.map((item) => [item.id, item])).values()];
     entries = loadEntries();
     reviewHistory = loadHistory();
     settings = loadSettings();
     deletedEntries = loadDeletedEntries();
-    try {
-      await FirebaseSync.sync({
-        entries: unique([...beforeLogin.entries, ...accountSnapshot.entries]),
-        reviewHistory: unique([...beforeLogin.reviewHistory, ...accountSnapshot.reviewHistory]),
-        settings: { ...accountSnapshot.settings, ...beforeLogin.settings }
-      }, applySyncedData);
-    } catch (error) {
-      showToast(`Cloud sync unavailable: ${error.message}`);
-      render();
-    }
+    render();
+    return;
   }
-
-  if (window.FirebaseSync) {
-    FirebaseSync.onStatusChange(renderSyncStatus);
-    FirebaseSync.onAuthChange((user) => {
-      $("account-label").textContent = user ? (user.email || "Signed in with Google") : "Not signed in";
-      $("google-sign-in").hidden = Boolean(user);
-      $("google-sign-out").hidden = !user;
-      $("sync-now").hidden = !user;
-      switchToAccount(user);
-    });
-    $("google-sign-in")?.addEventListener("click", async () => {
-      try {
-        if (!FirebaseSync.isConfigured()) {
-          showToast("Configure Firebase before signing in.");
-          setView("settings");
-          return;
-        }
-        await FirebaseSync.signInWithGoogle();
-      } catch (error) {
-        renderSyncStatus("error", error.message || "Google sign-in failed.");
-        showToast(error.message || "Google sign-in failed.");
-      }
-    });
-    $("google-sign-out")?.addEventListener("click", () => FirebaseSync.signOut().catch((error) => showToast(error.message)));
-    $("sync-now")?.addEventListener("click", () => FirebaseSync.sync(syncSnapshot, applySyncedData).catch(() => {}));
-    $("configure-firebase")?.addEventListener("click", () => {
-      const raw = prompt("Paste your Firebase web app configuration as JSON. Do not paste service-account credentials.");
-      if (!raw) return;
-      try {
-        const config = JSON.parse(raw);
-        FirebaseSync.saveConfig(config);
-        showToast("Firebase configuration saved locally.");
-        FirebaseSync.init();
-      } catch (_) {
-        showToast("That configuration is not valid JSON.");
-      }
-    });
-    FirebaseSync.init()
-      .then(() => FirebaseSync.handleRedirectResult())
-      .catch((error) => renderSyncStatus("error", error.message || "Firebase initialization failed."));
+  const beforeLogin = syncSnapshot();
+  activeAccountId = user.uid;
+  localStorage.setItem(ACCOUNT_KEY, activeAccountId);
+  entries = loadEntries();
+  reviewHistory = loadHistory();
+  settings = loadSettings();
+  deletedEntries = loadDeletedEntries();
+  try {
+    await FirebaseSync.sync({
+      entries: beforeLogin.entries,
+      reviewHistory: beforeLogin.reviewHistory,
+      settings: beforeLogin.settings
+    }, applySyncedData);
+  } catch (error) {
+    showToast(`Cloud sync unavailable: ${error.message}`);
+    render();
   }
-  isApplyingSync = false;
 }
 
 window.LexiconSyncAdapter = {
   snapshot: syncSnapshot,
   applyRemote: applySyncedData
 };
+
+if (window.FirebaseSync) {
+  FirebaseSync.onStatusChange(renderSyncStatus);
+  FirebaseSync.onAuthChange((user) => {
+    $("account-label").textContent = user ? (user.email || "Signed in with Google") : "Not signed in";
+    $("google-sign-in").hidden = Boolean(user);
+    $("google-sign-out").hidden = !user;
+    $("sync-now").hidden = !user;
+    switchToAccount(user);
+  });
+  $("google-sign-in")?.addEventListener("click", async () => {
+    try {
+      if (!FirebaseSync.isConfigured()) {
+        showToast("Configure Firebase before signing in.");
+        setView("settings");
+        return;
+      }
+      await FirebaseSync.signInWithGoogle();
+    } catch (error) {
+      renderSyncStatus("error", error.message || "Google sign-in failed.");
+      showToast(error.message || "Google sign-in failed.");
+    }
+  });
+  $("google-sign-out")?.addEventListener("click", () => FirebaseSync.signOut().catch((error) => showToast(error.message)));
+  $("sync-now")?.addEventListener("click", () => FirebaseSync.sync(syncSnapshot, applySyncedData).catch(() => {}));
+  $("configure-firebase")?.addEventListener("click", () => {
+    const raw = prompt("Paste your Firebase web app configuration as JSON. Do not paste service-account credentials.");
+    if (!raw) return;
+    try {
+      const config = JSON.parse(raw);
+      FirebaseSync.saveConfig(config);
+      showToast("Firebase configuration saved locally.");
+      FirebaseSync.init();
+    } catch (_) {
+      showToast("That configuration is not valid JSON.");
+    }
+  });
+  FirebaseSync.init()
+    .then(() => FirebaseSync.handleRedirectResult())
+    .catch((error) => renderSyncStatus("error", error.message || "Firebase initialization failed."));
+}
 
 function showToast(message) {
   const toast = document.createElement("div");
