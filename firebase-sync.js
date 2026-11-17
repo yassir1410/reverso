@@ -138,9 +138,17 @@
   async function signInWithGoogle() {
     if (!await init()) throw new Error("Firebase is not configured. Add the web app configuration first.");
     const provider = new window.firebase.auth.GoogleAuthProvider();
-    // Redirect is reliable on GitHub Pages because it is not subject to
-    // popup blockers or delayed user-gesture restrictions.
-    return auth.signInWithRedirect(provider);
+    try {
+      return await auth.signInWithPopup(provider);
+    } catch (error) {
+      // A popup can be blocked by browser policy. Redirect is the fallback,
+      // while configuration/provider errors must remain visible to the user.
+      if (error?.code === "auth/popup-blocked" || error?.code === "auth/cancelled-popup-request") {
+        return auth.signInWithRedirect(provider);
+      }
+      setStatus("error", getAuthErrorMessage(error));
+      throw new Error(getAuthErrorMessage(error));
+    }
   }
 
   async function handleRedirectResult() {
@@ -149,10 +157,24 @@
       const result = await auth.getRedirectResult();
       return result?.user || null;
     } catch (error) {
-      setStatus("error", error.message || "Google sign-in failed.");
+      const message = getAuthErrorMessage(error);
+      setStatus("error", message);
       console.error("Google redirect sign-in failed:", error);
-      throw error;
+      throw new Error(message);
     }
+  }
+
+  function getAuthErrorMessage(error) {
+    if (error?.code === "auth/unauthorized-domain") {
+      return "Google sign-in is not enabled for this website. Add yassir1410.github.io under Firebase Authentication > Settings > Authorized domains.";
+    }
+    if (error?.code === "auth/operation-not-allowed") {
+      return "Google sign-in is disabled. Enable Google under Firebase Authentication > Sign-in providers.";
+    }
+    if (error?.code === "auth/popup-closed-by-user") {
+      return "Google sign-in was cancelled. Select an account to continue.";
+    }
+    return error?.message || "Google sign-in failed. Try again.";
   }
 
   async function signOut() {
