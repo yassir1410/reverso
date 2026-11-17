@@ -886,6 +886,45 @@ body.dark .button-danger:hover {
   font-size: var(--text-14);
 }
 
+.search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex: 1;
+  min-width: 0;
+  max-width: 320px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--rounded-sm);
+  padding: 0 var(--space-12);
+  color: var(--muted);
+}
+.search-wrap:focus-within {
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 3px var(--secondary-soft);
+}
+.search-wrap input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: none;
+  padding: 10px 0;
+  color: var(--text);
+  min-width: 0;
+}
+.search-wrap input::placeholder { color: var(--muted); }
+.search-clear-btn {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  padding: 0;
+  line-height: 1;
+  cursor: pointer;
+}
+.search-clear-btn:hover { color: var(--text); }
+
 select {
   height: 40px;
   border: 1px solid var(--line);
@@ -2023,7 +2062,7 @@ body.dark .chart-col.is-today .chart-bar-fill {
   height: 100%;
   background: var(--secondary);
   border-radius: var(--rounded-sm);
-  transition: width 0.25s ease;
+  transition: width 0.3s ease;
 }
 
 .progress-counter {
@@ -2573,4 +2612,33 @@ body.dark .bulk-bar {
   .config-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Review card reveal animation */
+@keyframes revealFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.review-card-back.revealed {
+  animation: revealFadeIn 0.2s ease forwards;
+}
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.review-card.card-enter {
+  animation: cardSlideIn 0.18s ease forwards;
+}
+
+/* Due-today stat card highlight */
+.stat.stat-due-highlight {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+}
+.stat.stat-due-highlight .stat-value {
+  color: var(--warning);
+}
+body.dark .stat.stat-due-highlight {
+  border-color: var(--warning);
+  background: rgba(245, 158, 11, 0.12);
 }

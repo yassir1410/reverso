@@ -438,6 +438,11 @@ function renderDashboard(stats) {
     </div>
   `).join("");
 
+  if (stats.dueToday > 0) {
+    const statEls = $("stats-grid").querySelectorAll(".stat");
+    statEls[1]?.classList.add("stat-due-highlight");
+  }
+
   // 3. Streak indicator & Weekly Activity Chart
   $("streak-indicator").textContent = `${stats.currentStreak} day streak 🔥`;
 
@@ -478,6 +483,10 @@ function renderDashboard(stats) {
   `;
 
   // 5. Recent Words List
+  const recentPanelHeading = document.querySelector(".recent-panel .panel-heading h2");
+  if (recentPanelHeading) {
+    recentPanelHeading.textContent = `Recently added (${entries.length})`;
+  }
   const recent = [...entries].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
   $("recent-list").innerHTML = recent.length ? recent.map((entry) => `
     <div class="word-row">
@@ -607,6 +616,14 @@ function renderCurrentCard() {
   reviewAnswerRevealed = false;
   isSubmittingReview = false;
 
+  // Animate card entry
+  const card = $("review-card");
+  if (card) {
+    card.classList.remove("card-enter");
+    void card.offsetWidth;
+    card.classList.add("card-enter");
+  }
+
   const current = reviewQueue[reviewIndex];
   const total = reviewQueue.length;
   const currentNum = reviewIndex + 1;
@@ -686,6 +703,11 @@ function revealAnswer() {
   reviewAnswerRevealed = true;
 
   $("review-back").style.display = "block";
+  // Animate reveal
+  const back = $("review-back");
+  back.classList.remove("revealed");
+  void back.offsetWidth; // force reflow
+  back.classList.add("revealed");
   $("reveal-area").style.display = "none";
   $("rating-area").style.display = "block";
 
@@ -794,10 +816,15 @@ function filteredEntries(source = entries) {
   const todayStr = SRS.formatDateToDayString();
 
   const result = source.filter((entry) => {
-    // Search query matches word, translation, example, or notes
+    // Search query matches word, translation, example, or notes (or #tag prefix for tag-only search)
     if (query) {
-      const haystack = [entry.word, entry.translation, entry.example, entry.notes].join(" ").toLocaleLowerCase();
-      if (!haystack.includes(query)) return false;
+      if (query.startsWith("#")) {
+        const tagQuery = query.slice(1);
+        if (!normaliseTags(entry.tags).some((t) => t.toLocaleLowerCase().includes(tagQuery))) return false;
+      } else {
+        const haystack = [entry.word, entry.translation, entry.example, entry.notes].join(" ").toLocaleLowerCase();
+        if (!haystack.includes(query)) return false;
+      }
     }
 
     // State filter
@@ -806,6 +833,8 @@ function filteredEntries(source = entries) {
         if (!SRS.isDue(entry, todayStr)) return false;
       } else if (state === "mastered") {
         if (entry.interval_days < 21) return false;
+      } else if (state === "favorites") {
+        if (!entry.is_favorite) return false;
       } else if (entry.learning_state !== state) {
         return false;
       }
@@ -847,13 +876,32 @@ function renderCollection() {
   const todayStr = SRS.formatDateToDayString();
 
   if (list.length === 0) {
-    $("collection-list").innerHTML = emptyState("Nothing found", "Try another search filter or add a new word.");
-    $("collection-subtitle").textContent = "0 words in view";
+    const query = ($("search-input")?.value || "").trim();
+    const emptyMsg = query
+      ? `No words match "${escapeHTML(query)}". Try a different search or <button class="text-button" id="empty-clear-search">clear search</button>.`
+      : 'Try another filter or <button class="text-button" id="empty-add-word">add a new word</button>.';
+    const emptyTitle = query ? "No matching words" : "Nothing found";
+    $("collection-list").innerHTML = `<div class="empty-state"><strong>${emptyTitle}</strong>${emptyMsg}</div>`;
+    $("collection-subtitle").textContent = query ? `0 words matching "${query}"` : "0 words in view";
+
+    $("empty-clear-search")?.addEventListener("click", () => {
+      $("search-input").value = "";
+      const clearBtn = $("search-clear-btn");
+      if (clearBtn) clearBtn.hidden = true;
+      renderCollection();
+    });
+    $("empty-add-word")?.addEventListener("click", () => {
+      resetForm();
+      openModal("word-modal");
+    });
     updateBulkBar();
     return;
   }
 
-  $("collection-subtitle").textContent = `${list.length} ${list.length === 1 ? "word" : "words"} in view`;
+  const query = ($("search-input")?.value || "").trim();
+  $("collection-subtitle").textContent = query
+    ? `${list.length} ${list.length === 1 ? "word" : "words"} matching "${query}"`
+    : `${list.length} ${list.length === 1 ? "word" : "words"} in view`;
 
   $("collection-list").innerHTML = list.map((entry) => {
     const isSelected = selectedIds.has(entry.id);
@@ -881,6 +929,7 @@ function renderCollection() {
           <button class="star ${entry.is_favorite ? "favorite" : ""}" data-favorite="${entry.id}" aria-label="Favorite">
             ${entry.is_favorite ? "★" : "☆"}
           </button>
+          <button class="small-action" data-quick-review="${entry.id}" aria-label="Review now" title="Quick review">↻</button>
           <button class="small-action" data-edit="${entry.id}" aria-label="Edit">✎</button>
           <button class="small-action delete" data-delete="${entry.id}" aria-label="Delete">×</button>
         </div>
@@ -1145,6 +1194,9 @@ function openDetailModal(id) {
         Reset learning progress
       </button>
       <div class="detail-footer-right">
+        <button class="button button-secondary" id="detail-copy-btn" data-id="${entry.id}" title="Copy word to clipboard">
+          Copy
+        </button>
         <button class="button button-secondary close-modal">Close</button>
         <button class="button button-secondary" id="detail-reverso-btn" data-id="${entry.id}">
           Reverso ↗
@@ -1180,6 +1232,22 @@ function openDetailModal(id) {
         showToast("Learning progress reset");
       }
     }
+  };
+
+  $("detail-copy-btn").onclick = () => {
+    const text = `${entry.word} — ${entry.translation}`;
+    navigator.clipboard?.writeText(text).then(() => showToast("Copied to clipboard")).catch(() => {
+      // fallback for http
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      showToast("Copied to clipboard");
+    });
   };
 }
 
@@ -1229,6 +1297,12 @@ function resetForm() {
 
   $("language-from").value = settings.default_language_from || "English";
   $("language-to").value = settings.default_language_to || "Arabic";
+
+  const datalist = $("tags-datalist");
+  if (datalist) {
+    const existingTags = [...new Set(entries.flatMap((e) => normaliseTags(e.tags)))].sort();
+    datalist.innerHTML = existingTags.map((t) => `<option value="${escapeHTML(t)}">`).join("");
+  }
 }
 
 function editEntry(id) {
@@ -1242,6 +1316,12 @@ function editEntry(id) {
       input.value = field === "tags" ? normaliseTags(entry.tags).join(", ") : entry[field] || "";
     }
   });
+
+  const datalist = $("tags-datalist");
+  if (datalist) {
+    const existingTags = [...new Set(entries.flatMap((e) => normaliseTags(e.tags)))].sort();
+    datalist.innerHTML = existingTags.map((t) => `<option value="${escapeHTML(t)}">`).join("");
+  }
 
   $("word-modal-title").textContent = "Edit word";
   openModal("word-modal");
@@ -1782,6 +1862,22 @@ document.addEventListener("click", (event) => {
     }
   }
 
+  if (target.dataset.quickReview) {
+    const entry = entries.find((e) => e.id === target.dataset.quickReview);
+    if (entry) {
+      reviewQueue = [SRS.normalizeEntry(entry, SRS.formatDateToDayString())];
+      reviewIndex = 0;
+      reviewAnswerRevealed = false;
+      isSubmittingReview = false;
+      sessionReviewHistory = [];
+      setView("review");
+      $("review-config-screen").style.display = "none";
+      $("review-complete-screen").style.display = "none";
+      $("review-active-screen").style.display = "block";
+      renderCurrentCard();
+    }
+  }
+
   if (target.dataset.edit) {
     editEntry(target.dataset.edit);
   }
@@ -1891,7 +1987,18 @@ document.addEventListener("change", (event) => {
   }
 });
 
-$("search-input")?.addEventListener("input", renderCollection);
+$("search-input")?.addEventListener("input", () => {
+  const val = $("search-input").value;
+  const btn = $("search-clear-btn");
+  if (btn) btn.hidden = !val;
+  renderCollection();
+});
+$("search-clear-btn")?.addEventListener("click", () => {
+  $("search-input").value = "";
+  $("search-clear-btn").hidden = true;
+  $("search-input").focus();
+  renderCollection();
+});
 $("word-form")?.addEventListener("submit", handleWordSubmit);
 $("learning-settings-form")?.addEventListener("submit", handleSettingsSubmit);
 
@@ -1924,6 +2031,23 @@ document.addEventListener("keydown", (event) => {
       exitReviewSession();
     }
     return;
+  }
+
+  // "/" focuses the search box when on the All Words view
+  if (event.key === "/" && activeView === "all") {
+    event.preventDefault();
+    $("search-input")?.focus();
+    return;
+  }
+
+  // "n" opens the Add Word modal from anywhere
+  if (event.key === "n" || event.key === "N") {
+    if (!document.querySelector(".modal-backdrop.open")) {
+      event.preventDefault();
+      resetForm();
+      openModal("word-modal");
+      return;
+    }
   }
 
   // If shortcuts are disabled in settings, ignore review shortcuts

@@ -342,10 +342,11 @@
 
             <!-- Enhanced Toolbar with Learning State Filter -->
             <div class="toolbar">
-              <label class="search-field">
+              <div class="search-wrap">
                 <span>⌕</span>
-                <input id="search-input" type="search" placeholder="Search words, translations, notes..." />
-              </label>
+                <input id="search-input" type="search" placeholder="Search words, translations, notes… or #tag" />
+                <button class="search-clear-btn" id="search-clear-btn" aria-label="Clear search" hidden>×</button>
+              </div>
               <select id="state-filter" aria-label="Filter by learning state">
                 <option value="">All states</option>
                 <option value="due">Due today</option>
@@ -353,6 +354,7 @@
                 <option value="learning">Learning</option>
                 <option value="review">Review</option>
                 <option value="mastered">Mastered (21d+)</option>
+                <option value="favorites">Favorites</option>
               </select>
               <select id="language-filter" aria-label="Filter by language pair"><option value="">All language pairs</option></select>
               <select id="tag-filter" aria-label="Filter by tag"><option value="">All tags</option></select>
@@ -629,7 +631,8 @@
             </label>
             <label class="field field-wide">
               <span>Tags <small>Separate with commas</small></span>
-              <input id="tags" placeholder="travel, reading, b2" />
+              <input id="tags" placeholder="travel, reading, b2" list="tags-datalist" autocomplete="off" />
+              <datalist id="tags-datalist"></datalist>
             </label>
             <label class="field field-wide">
               <span>Notes</span>

@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "description": "Minimalist personal vocabulary learning & spaced repetition tool",
   "scripts": {
-    "test": "node tests/full-suite.test.js && node tests/import-export.test.js && node tests/import-robustness.test.js"
+    "test": "node tests/full-suite.test.js && node tests/import-export.test.js && node tests/import-robustness.test.js && node tests/srs.test.js && node tests/firebase.test.js && node tests/ux-enhancements.test.js"
   },
   "keywords": ["vocabulary", "spaced-repetition", "sm2", "reverso", "learning"],
   "author": "",
